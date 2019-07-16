@@ -1,0 +1,61 @@
+---
+title: "Final project-Predict Prices for Your Dream House"
+author: "STAT 420, Summer 2019, Zhenzhou Yang (zy29), Swan Htun (swanh2), Mike Kramer (mkramer4)"
+date: '7/16/2019'
+output:
+  html_document: 
+    toc: yes
+  pdf_document: default
+urlcolor: cyan
+---
+
+# Introduction
+
+## Overview
+
+In this project, we plan to find a suitable linear model to predict the prices of residential houses locating in Ames, Iowa, based on their attributes provided. This model is meaningful that the customers who want to buy a new house may rely on it to have a rough estimation. 
+
+In this project, many of the topics will be included, some of them will be:
+- Multiple linear regression
+- Outlier diagnostics
+- Model building 
+- Model selection
+
+## Dataset Introduction
+
+### Source
+The `Ames Housing dataset` we use in this project is provided by Dean De Cock from Truman State University for [`Kaggle competition`](https://www.kaggle.com/c/house-prices-advanced-regression-techniques/data).
+
+The origin dataset mainly includes the sale of individual residential houses in Ames, Iowa from 2006 to 2010. 
+
+It contains 2930 observations with 23 nominal, 23 ordinal, 14 discrete and 20 continuous variables, which are directly related to property sales. 
+
+In our project, we choose the variables which we think have significant influence in affecting the price of a house to somplify the data and try to reduce the collinearity between different predictors at beginning:
+
+- **SalePrice**: the property's sale price in dollars. This is our target to predict.
+- **LotArea**: Lot size in square feet.
+- **MSZoning**: Identifies the general zoning classification of the sale. It has following types:
+  - A:	Agriculture
+  - C:	Commercial
+  - FV:	Floating Village Residential
+  - I:	Industrial
+  - RH:	Residential High Density
+  - RL:	Residential Low Density
+  - RP:	Residential Low Density Park 
+  - RM:	Residential Medium Density
+- **LotShape**: General shape of property. It has the following levels:
+  - Reg:	Regular	
+  - IR1:	Slightly irregular
+  - IR2:	Moderately Irregular
+  - IR3:	Irregular
+- **OverallQual**: Overall material and finish quality. It is an ordinal categorical variable range from 1 to 10 in origin data, which indicating the quality from very low to very excellent. But for simplification, we group them up to three categorical:
+  - 3: excellent
+  - 2: average
+  - 1: poor
+- **YearBuilt**: Original construction date.
+- **TotalBsmtSF**: Total square feet of basement area.
+- **LowQualFinSF**: Low quality finished square feet (all floors).
+- **BedroomAbvGr**: Bedrooms above grade (does NOT include basement bedrooms).
+- **FullBath**: Full bathrooms above grade.
+- **GarageArea**: Size of garage in square feet.
+
