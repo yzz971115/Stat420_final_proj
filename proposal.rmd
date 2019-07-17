@@ -24,11 +24,14 @@ In this project, many of the topics will be included, some of them will be:
 ## Dataset Introduction
 
 ### Source
+
 The `Ames Housing dataset` we use in this project is provided by Dean De Cock from Truman State University for [`Kaggle competition`](https://www.kaggle.com/c/house-prices-advanced-regression-techniques/data).
+
+### Introduction
 
 The origin dataset mainly includes the sale of individual residential houses in Ames, Iowa from 2006 to 2010. 
 
-It contains 2930 observations with 23 nominal, 23 ordinal, 14 discrete and 20 continuous variables, which are directly related to property sales. 
+It contains 2919 observations with 23 nominal, 23 ordinal, 14 discrete and 20 continuous variables, which are directly related to property sales. And we just use half of it which contains 1460 observations and split the data by half into our train and test dataset.
 
 In our project, we choose the variables which we think have significant influence in affecting the price of a house to somplify the data and try to reduce the collinearity between different predictors at beginning:
 
@@ -58,4 +61,42 @@ In our project, we choose the variables which we think have significant influenc
 - **BedroomAbvGr**: Bedrooms above grade (does NOT include basement bedrooms).
 - **FullBath**: Full bathrooms above grade.
 - **GarageArea**: Size of garage in square feet.
+
+### Data
+
+In this section, we will take a look at the data which has been modified by us for the project.
+
+- Train data
+```{r,message=FALSE}
+library(readr)
+data_raw = read_csv("house price.csv")
+
+# split the data
+train_idx = sample(1 : nrow(data_raw), nrow(data_raw) / 2)
+test_idx = setdiff(seq(1 : nrow(data_raw)), train_idx)
+
+train_raw = data_raw[train_idx,]
+test_raw = data_raw[test_idx,]
+
+# select variables we want to use
+train = subset(train_raw, select = c("SalePrice", "LotArea", "MSZoning", "LotShape", "OverallQual", "YearBuilt", "TotalBsmtSF", "LowQualFinSF", "BedroomAbvGr", "FullBath", "GarageArea"))
+
+# show a few lines
+head(train, 5)
+
+# let's take a galance at the response variable
+head(train$SalePrice, 10)
+```
+
+- Test data
+```{r,message=FALSE} 
+# select variables we want to use
+test = subset(test_raw, select = c("SalePrice", "LotArea", "MSZoning", "LotShape", "OverallQual", "YearBuilt", "TotalBsmtSF", "LowQualFinSF", "BedroomAbvGr", "FullBath", "GarageArea"))
+
+# show a few lines
+head(test, 5)
+
+# let's take a galance at the response variable
+head(test$SalePrice, 10)
+```
 

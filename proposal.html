@@ -386,6 +386,8 @@ $(document).ready(function () {
 <li><a href="#overview">Overview</a></li>
 <li><a href="#dataset-introduction">Dataset Introduction</a><ul>
 <li><a href="#source">Source</a></li>
+<li><a href="#introduction-1">Introduction</a></li>
+<li><a href="#data">Data</a></li>
 </ul></li>
 </ul></li>
 </ul>
@@ -403,8 +405,11 @@ $(document).ready(function () {
 <div id="source" class="section level3">
 <h3>Source</h3>
 <p>The <code>Ames Housing dataset</code> we use in this project is provided by Dean De Cock from Truman State University for <a href="https://www.kaggle.com/c/house-prices-advanced-regression-techniques/data"><code>Kaggle competition</code></a>.</p>
+</div>
+<div id="introduction-1" class="section level3">
+<h3>Introduction</h3>
 <p>The origin dataset mainly includes the sale of individual residential houses in Ames, Iowa from 2006 to 2010.</p>
-<p>It contains 2930 observations with 23 nominal, 23 ordinal, 14 discrete and 20 continuous variables, which are directly related to property sales.</p>
+<p>It contains 2919 observations with 23 nominal, 23 ordinal, 14 discrete and 20 continuous variables, which are directly related to property sales. And we just use half of it which contains 1460 observations and split the data by half into our train and test dataset.</p>
 <p>In our project, we choose the variables which we think have significant influence in affecting the price of a house to somplify the data and try to reduce the collinearity between different predictors at beginning:</p>
 <ul>
 <li><strong>SalePrice</strong>: the property’s sale price in dollars. This is our target to predict.</li>
@@ -440,6 +445,62 @@ $(document).ready(function () {
 <li><strong>FullBath</strong>: Full bathrooms above grade.</li>
 <li><strong>GarageArea</strong>: Size of garage in square feet.</li>
 </ul>
+</div>
+<div id="data" class="section level3">
+<h3>Data</h3>
+<p>In this section, we will take a look at the data which has been modified by us for the project.</p>
+<ul>
+<li>Train data</li>
+</ul>
+<pre class="r"><code>library(readr)
+data_raw = read_csv(&quot;house price.csv&quot;)
+
+# split the data
+train_idx = sample(1 : nrow(data_raw), nrow(data_raw) / 2)
+test_idx = setdiff(seq(1 : nrow(data_raw)), train_idx)
+
+train_raw = data_raw[train_idx,]
+test_raw = data_raw[test_idx,]
+
+# select variables we want to use
+train = subset(train_raw, select = c(&quot;SalePrice&quot;, &quot;LotArea&quot;, &quot;MSZoning&quot;, &quot;LotShape&quot;, &quot;OverallQual&quot;, &quot;YearBuilt&quot;, &quot;TotalBsmtSF&quot;, &quot;LowQualFinSF&quot;, &quot;BedroomAbvGr&quot;, &quot;FullBath&quot;, &quot;GarageArea&quot;))
+
+# show a few lines
+head(train, 5)</code></pre>
+<pre><code>## # A tibble: 5 x 11
+##   SalePrice LotArea MSZoning LotShape OverallQual YearBuilt TotalBsmtSF
+##       &lt;dbl&gt;   &lt;dbl&gt; &lt;chr&gt;    &lt;chr&gt;          &lt;dbl&gt;     &lt;dbl&gt;       &lt;dbl&gt;
+## 1    250000   10625 FV       Reg                7      2005        1026
+## 2    169500    7590 RL       Reg                5      1962         864
+## 3    116050    9353 RL       Reg                4      1970         864
+## 4    119000    8190 RL       Reg                4      1954         948
+## 5    176000    7024 RL       Reg                4      2005        1132
+## # … with 4 more variables: LowQualFinSF &lt;dbl&gt;, BedroomAbvGr &lt;dbl&gt;,
+## #   FullBath &lt;dbl&gt;, GarageArea &lt;dbl&gt;</code></pre>
+<pre class="r"><code># let's take a galance at the response variable
+head(train$SalePrice, 10)</code></pre>
+<pre><code>##  [1] 250000 169500 116050 119000 176000 106500 184750 105000 214500 118000</code></pre>
+<ul>
+<li>Test data</li>
+</ul>
+<pre class="r"><code># select variables we want to use
+test = subset(test_raw, select = c(&quot;SalePrice&quot;, &quot;LotArea&quot;, &quot;MSZoning&quot;, &quot;LotShape&quot;, &quot;OverallQual&quot;, &quot;YearBuilt&quot;, &quot;TotalBsmtSF&quot;, &quot;LowQualFinSF&quot;, &quot;BedroomAbvGr&quot;, &quot;FullBath&quot;, &quot;GarageArea&quot;))
+
+# show a few lines
+head(test, 5)</code></pre>
+<pre><code>## # A tibble: 5 x 11
+##   SalePrice LotArea MSZoning LotShape OverallQual YearBuilt TotalBsmtSF
+##       &lt;dbl&gt;   &lt;dbl&gt; &lt;chr&gt;    &lt;chr&gt;          &lt;dbl&gt;     &lt;dbl&gt;       &lt;dbl&gt;
+## 1    223500   11250 RL       IR1                7      2001         920
+## 2    140000    9550 RL       IR1                7      1915         756
+## 3    200000   10382 RL       IR1                7      1973        1107
+## 4    345000   11924 RL       IR1                9      2005        1175
+## 5    144000   12968 RL       IR2                5      1962         912
+## # … with 4 more variables: LowQualFinSF &lt;dbl&gt;, BedroomAbvGr &lt;dbl&gt;,
+## #   FullBath &lt;dbl&gt;, GarageArea &lt;dbl&gt;</code></pre>
+<pre class="r"><code># let's take a galance at the response variable
+head(test$SalePrice, 10)</code></pre>
+<pre><code>##  [1] 223500 140000 200000 345000 144000 132000 149000  90000 139000 325300</code></pre>
 </div>
 </div>
 </div>
