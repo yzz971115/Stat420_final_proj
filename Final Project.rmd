@@ -1,5 +1,5 @@
 ---
-title: "Final project-Predict Prices for Your Dream House"
+title: "Predict Prices for Your Dream House"
 author: "STAT 420, Summer 2019, Zhenzhou Yang (zy29), Swan Htun (swanh2), Mike Kramer (mkramer4)"
 date: '7/16/2019'
 output:
@@ -16,6 +16,7 @@ urlcolor: cyan
 In this project, we plan to find a suitable linear model to predict the prices of residential houses locating in Ames, Iowa, based on their attributes provided. This model is meaningful that the customers who want to buy a new house may rely on it to have a rough estimation. 
 
 In this project, many of the topics will be included, some of them will be:
+
 - Multiple linear regression
 - Outlier diagnostics
 - Model building 
@@ -51,10 +52,7 @@ In our project, we choose the variables which we think have significant influenc
   - IR1:	Slightly irregular
   - IR2:	Moderately Irregular
   - IR3:	Irregular
-- **OverallQual**: Overall material and finish quality. It is an ordinal categorical variable range from 1 to 10 in origin data, which indicating the quality from very low to very excellent. But for simplification, we group them up to three categorical:
-  - 3: excellent
-  - 2: average
-  - 1: poor
+- **OverallQual**: Overall material and finish quality. It is an ordinal categorical variable range from 1 to 10 in origin data, which indicating the quality from very poor to very excellent.
 - **YearBuilt**: Original construction date.
 - **TotalBsmtSF**: Total square feet of basement area.
 - **LowQualFinSF**: Low quality finished square feet (all floors).
