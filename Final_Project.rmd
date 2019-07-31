@@ -109,6 +109,8 @@ head(test$SalePrice, 10)
 
 - We will also compare the adjusted R-squared values as well as LOOCV-RMSE of our models.
 
+- Then, we will use the selected model to predict the house prices and check the results of our predictions. 
+
 
 ```{r}
 str(train)
@@ -200,24 +202,38 @@ all_house_mod$adjr2
 
 - Calculate VIF of each of the models selected from the backward AIC and BIC search.
 
-```{r, eval = FALSE}
-#longer object length is not a multiple of shorter object length error 
+```{r, warning= FALSE}
 vif_full = vif(full_add_model)
 vif_2int = vif(full_2int_model)
+
+length(coef(full_2int_model))
+length(coef(full_add_model))
+
+vif(full_add_model)[which.max(vif(full_add_model))]
+vif(full_2int_model)[which.max(vif(full_2int_model))]
 ```
 
-```{r, eval = FALSE}
-#longer object length is not a multiple of shorter object length error 
+
+```{r, warning = FALSE}
 vif_aic_add = vif(aic_add_selected)
 vif_aic_2int = vif(aic_2int_selected)
+
+length(coef(aic_add_selected))
+length(coef(aic_2int_selected))
+
 vif(aic_add_selected)[which.max(vif(aic_add_selected))]
 vif(aic_2int_selected)[which.max(vif(aic_2int_selected))]
 
 ```
 
-```{r}
+
+```{r, warning=FALSE}
 vif_bic_add = vif(bic_add_selected)
 vif_bic_2int = vif(bic_2int_selected)
+
+length(coef(bic_add_selected))
+length(coef(bic_2int_selected))
+
 vif(bic_add_selected)[which.max(vif(bic_add_selected))]
 vif(bic_2int_selected)[which.max(vif(bic_2int_selected))]
 
@@ -255,8 +271,6 @@ summary(aic_2int_selected)$adj
 summary(bic_add_selected)$adj
 summary(bic_2int_selected)$adj
 ```
-
-
 
 **Average Percent Error**
 
