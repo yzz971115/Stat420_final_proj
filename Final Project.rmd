@@ -178,10 +178,171 @@ From the table above, we do not find any significant colliearity between differe
 
 ## Model Fitting
 
-- Firstly, we fit the model with all variables as predictors
-```{r}
-model = lm(SalePrice ~ ., data = train)
-summary(model)
+- Before we create any models, we prefer to define some functions we may use later first.
+```{r,message=FALSE}
+library(lmtest)
+
+# Fitted versus Residuals Plot
+plot_fitted_resid = function(model, pointcol = "dodgerblue", linecol = "darkorange") {
+  plot(fitted(model), resid(model), 
+       col = pointcol, pch = 20, cex = 1.5,
+       xlab = "Fitted", ylab = "Residuals")
+  abline(h = 0, col = linecol, lwd = 2)
+}
+
+# Q-Q plot
+plot_qq = function(model, pointcol = "dodgerblue", linecol = "darkorange") {
+  qqnorm(resid(model), col = pointcol, pch = 20, cex = 1.5)
+  qqline(resid(model), col = linecol, lwd = 2)
+}
+
+# bptest
+get_bp_decision = function(model, alpha = 0.05) {
+  decide = unname(bptest(model)$p.value < alpha)
+  ifelse(decide, "Reject", "Fail to Reject")
+}
+
+# shapiro wilk test
+get_sw_decision = function(model, alpha = 0.05) {
+  decide = unname(shapiro.test(resid(model))$p.value < alpha)
+  ifelse(decide, "Reject", "Fail to Reject")
+}
+
+# LOOCV_RMSE
+get_loocv_rmse = function(model) {
+  sqrt(mean((resid(model) / (1 - hatvalues(model))) ^ 2))
+}
+
+# ajusted R2
+get_adj_r2 = function(model) {
+  summary(model)$adj.r.squared
+}
 ```
 
-We now will use `ANOVA` to test the significance of the factor variables.
+### Candidate Models
+
+- Firstly, we will start with an intersection model with all possible two-way interaction between predictors and an additive model with all possible predictors.
+```{r}
+model_add = lm(SalePrice ~ ., data = train)
+model_inter = lm(SalePrice ~ . ^ 2, data = train)
+```
+
+- We will also try to find some models with transformed variables。
+
+As we analyzed before, after the log transformation, the SalePrice will be more normalized.
+```{r}
+log_add = lm(log(SalePrice) ~ ., data = train)
+log_inter = lm(log(SalePrice) ~ . ^ 2, data = train)
+```
+
+Then, we will check the realtionship between `SalePrice` and each numerical predictors
+```{r}
+par(mfrow = c(3, 2))
+plot(SalePrice ~ LotArea, data = train, col = "darkgrey")
+plot(SalePrice ~ YearBuilt, data = train, col = "darkgrey")
+plot(SalePrice ~ TotalBsmtSF, data = train, col = "darkgrey")
+plot(SalePrice ~ LowQualFinSF, data = train, col = "darkgrey")
+plot(SalePrice ~ BedroomAbvGr, data = train, col = "darkgrey")
+```
+
+We try to use some transformations to make the plot looks like more linearly.
+```{r}
+par(mfrow = c(3, 2))
+plot(log(SalePrice) ~ log(LotArea), data = train, col = "darkgrey")
+plot(log(SalePrice) ~ YearBuilt, data = train, col = "darkgrey")
+plot(log(SalePrice) ~ TotalBsmtSF, data = train, col = "darkgrey")
+plot(SalePrice ~ I(TotalBsmtSF ^ 2), data = train, col = "darkgrey")
+plot(log(SalePrice) ~ LowQualFinSF, data = train, col = "darkgrey")
+plot(log(SalePrice) ~ log(BedroomAbvGr), data = train, col = "darkgrey")
+```
+
+Based on the above plots, we add several new models.
+```{r}
+trans_mod_1 = lm(log(SalePrice) ~ . - LotArea + log(LotArea), data = train)
+trans_mod_1_inter = lm(log(SalePrice) ~ (. - LotArea + log(LotArea)) ^ 2, data = train)
+
+trans_mod_2 = lm(SalePrice ~ . - LotArea + log(LotArea) + I(TotalBsmtSF ^ 2) + I(YearBuilt ^ 2), data = train)
+
+trans_mod_3 = lm(log(SalePrice) ~ . - LotArea - BedroomAbvGr + log(LotArea) + log(BedroomAbvGr), data = train)
+
+trans_mod_4 = lm(log(SalePrice) ~ . - LotArea - BedroomAbvGr + log(LotArea) + log(BedroomAbvGr) + I(TotalBsmtSF ^ 2) + I(YearBuilt ^ 2), data = train)
+```
+
+- Right now, we have 9 candidate models in total:
+  - model_add
+  - model_inter
+  - log_add
+  - log_inter
+  - trans_mod_1
+  - trans_mod_1_inter
+  - trans_mod_2
+  - trans_mod_3
+  - trans_mod_4
+
+### Model Choosing
+
+- In the next step, we will use BIC to choose the best model for us, and for the additive models, we will use both backward and stepwise search.
+```{r}
+n = nrow(train) # for BIC
+
+# additive model
+add_backward = step(model_add, direction = 'backward', trace = 0, k = log(n))
+add_forward = step(lm(SalePrice ~ 1, data = train),
+                   scope = SalePrice ~ LotArea + MSZoning + LotShape + OverallQual + YearBuilt + TotalBsmtSF + LowQualFinSF + BedroomAbvGr + FullBath + GarageArea, direction = 'both', trace = 0, k = log(n))
+
+get_adj_r2(add_backward)
+get_adj_r2(add_forward)
+get_loocv_rmse(add_backward)
+get_loocv_rmse(add_forward)
+
+# interaction model 
+inter_backward = step(model_inter, direction = 'backward', k = log(n), trace = 0)
+
+get_adj_r2(inter_backward)
+get_loocv_rmse(inter_backward)
+
+# log additive model
+log_add_backward = step(log_add, direction = 'backward', trace = 0, k = log(n))
+log_add_forward = step(lm(log(SalePrice) ~ 1, data = train), 
+                       scope = log(SalePrice) ~ LotArea + MSZoning + LotShape + OverallQual + YearBuilt + TotalBsmtSF + LowQualFinSF + BedroomAbvGr + FullBath + GarageArea, trace = 0, direction = 'forward', k = log(n))
+
+get_adj_r2(log_add_backward)
+get_adj_r2(log_add_forward)
+get_loocv_rmse(log_add_backward) # log response
+get_loocv_rmse(log_add_forward) # log response
+
+# log interaction model
+log_inter_backward = step(log_inter, direction = 'backward', trace = 0, k = log(n))
+
+get_adj_r2(log_inter_backward)
+get_loocv_rmse(log_inter_backward) # log response
+
+# transformation model 1
+trans_1_backward = step(trans_mod_1, direction = 'backward', trace = 0, k = log(n))
+trans_1_inter = step(trans_mod_1_inter, direction = 'backward', trace = 0, k = log(n))
+
+get_adj_r2(trans_1_backward)
+get_adj_r2(trans_1_inter)
+get_loocv_rmse(trans_1_backward) # log response
+get_loocv_rmse(trans_1_inter) # log response
+
+# transformation model 2
+trans_2_backward = step(trans_mod_2, direction = 'backward', trace = 0, k = log(n))
+
+get_adj_r2(trans_2_backward)
+get_loocv_rmse(trans_2_backward)
+
+# transformation model 3
+trans_3_backward = step(trans_mod_3, direction = 'backward', trace = 0, k = log(n))
+
+get_adj_r2(trans_3_backward) 
+get_loocv_rmse(trans_3_backward) # log response
+
+# transformation model 4
+trans_4_backward = step(trans_mod_4, direction = 'backward', k = log(n), trace = 0)
+
+get_adj_r2(trans_4_backward)
+get_loocv_rmse(trans_4_backward) # log response
+```
+
+Since some of the models have log transformed response, the non-log model and log model cannot be compared with LOOCV_RMSE directly, we will choose the best models of each kind.
