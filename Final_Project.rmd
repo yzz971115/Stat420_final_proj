@@ -65,6 +65,7 @@ In our project, we choose the variables which we think have significant influenc
 In this section, we will take a look at the data which has been modified by us for the project.
 
 - Train data
+
 ```{r,message=FALSE}
 library(readr)
 data_raw = read_csv("house price.csv")
@@ -88,6 +89,7 @@ head(train$SalePrice, 10)
 ```
 
 - Test data
+
 ```{r,message=FALSE} 
 # select variables we want to use
 test = subset(test_raw, select = c("SalePrice", "LotArea", "MSZoning", "LotShape", "OverallQual", "YearBuilt", "TotalBsmtSF", "LowQualFinSF", "BedroomAbvGr", "FullBath", "GarageArea"))
@@ -99,11 +101,14 @@ head(test, 5)
 head(test$SalePrice, 10)
 ```
 
+***
+
 # Methods
  
 ## Data Checking
 
-- First of all, we will check the validality of our data and omit the missing data.
+**(1)** First of all, we will check the validality of our data and omit the missing data.
+
 ```{r}
 # train set
 sum(is.na(train))
@@ -114,7 +119,8 @@ sum(is.na(test))
 
 It seems that our data set is very good! There is no missing data in it.
 
-- The next step is to convert our categorical variables into factor.
+**(2)** The next step is to convert our categorical variables into factor.
+
 ```{r}
 # train set
 train$MSZoning = as.factor(train$MSZoning)
@@ -126,6 +132,7 @@ test$LotShape = as.factor(test$LotShape)
 ```
 
 And also, since `OverallQual` has 10 levels which maybe too complicated for us to use, we just modify it into three different levels, the original level 1-3 will be **poor**, level 4-7 will be **average**, the rest, level 8-10, will be **excellent**.
+
 ```{r}
 # train set
 train$OverallQual[train$OverallQual == 3 | train$OverallQual == 2 | train$OverallQual == 1] = "poor"
@@ -142,12 +149,14 @@ test$OverallQual[test$OverallQual == 8 | test$OverallQual == 9 | test$OverallQua
 test$OverallQual = as.factor(test$OverallQual)
 ```
 
-- Then, we will to check the distribution of our target -- `SalePrice`. 
+**(3)** Then, we will to check the distribution of our target -- `SalePrice`. 
+
 ```{r}
 hist(train$SalePrice, col = 'darkorange', main = 'Sale Price', prob = TRUE)
 ```
 
 It seems that the `SalePrice` is right skewed, so we will try to make some transformations to make it look better.
+
 ```{r}
 hist(log(train$SalePrice), col = 'darkorange', main = 'Sale Price', prob = TRUE)
 qqnorm(log(train$SalePrice), col = "darkgrey", pch = 20, cex= 1.25)
@@ -158,7 +167,8 @@ After the log transformation, the distribution looks much better now.
 
 ## Predictor Choosing
 
-- We first modify the factor variables into numeric ones to check the correlation between each variables.
+We first modify the factor variables into numeric ones to check the correlation between each variables.
+
 ```{r}
 p = train$OverallQual
 
@@ -185,9 +195,14 @@ From the table above, we do not find any significant colliearity between differe
 
 ## Model Fitting
 
-- Before we create any models, we prefer to define some functions we may use later first.
+Before we create any models, we prefer to define some functions we may use later first and import the packages we need.
+
 ```{r,message=FALSE}
 library(lmtest)
+library(MASS)
+library(faraway)
+library(knitr)
+library(kableExtra)
 
 # Fitted versus Residuals Plot
 plot_fitted_resid = function(model, pointcol = "darkgrey", linecol = "darkorange") {
@@ -224,25 +239,33 @@ get_loocv_rmse = function(model) {
 get_adj_r2 = function(model) {
   summary(model)$adj.r.squared
 }
+
+# average percentage error
+get_avg_err = function(actual, predicted) {
+  mean(abs(predicted - actual) / actual)
+}
 ```
 
 ### Candidate Models
 
-- Firstly, we will start with an intersection model with all possible two-way interaction between predictors and an additive model with all possible predictors.
+**(1)** Firstly, we will start with an intersection model with all possible two-way interaction between predictors and an additive model with all possible predictors.
+
 ```{r}
 model_add = lm(SalePrice ~ ., data = train)
 model_inter = lm(SalePrice ~ . ^ 2, data = train)
 ```
 
-- We will also try to find some models with transformed variables。
+**(2)** We will also try to find some models with transformed variables。
 
 As we analyzed before, after the log transformation, the SalePrice will be more normalized.
+
 ```{r}
 log_add = lm(log(SalePrice) ~ ., data = train)
 log_inter = lm(log(SalePrice) ~ . ^ 2, data = train)
 ```
 
-Then, we will check the realtionship between `SalePrice` and each numerical predictors
+**(3)** Then, we will check the realtionship between `SalePrice` and each numerical predictors.
+
 ```{r}
 par(mfrow = c(3, 2))
 plot(SalePrice ~ LotArea, data = train, col = "darkgrey")
@@ -253,6 +276,7 @@ plot(SalePrice ~ BedroomAbvGr, data = train, col = "darkgrey")
 ```
 
 We try to use some transformations to make the plot looks like more linearly.
+
 ```{r}
 par(mfrow = c(3, 2))
 plot(log(SalePrice) ~ log(LotArea), data = train, col = "darkgrey")
@@ -263,13 +287,14 @@ plot(log(SalePrice) ~ LowQualFinSF, data = train, col = "darkgrey")
 ```
 
 Based on the above plots, we add several new models.
+
 ```{r}
 trans_mod_1 = lm(log(SalePrice) ~ . - LotArea + log(LotArea), data = train)
 trans_mod_1_inter = lm(log(SalePrice) ~ (. - LotArea + log(LotArea)) ^ 2, data = train)
 
 trans_mod_2 = lm(SalePrice ~ . - LotArea + log(LotArea) + I(TotalBsmtSF ^ 2) + I(YearBuilt ^ 2), data = train)
 
-trans_mod_3 = lm(log(SalePrice) ~ . - LotArea + log(LotArea), data = train)
+trans_mod_3 = lm(log(SalePrice) ~ . + I(TotalBsmtSF ^ 2) + I(YearBuilt ^ 2), data = train)
 
 trans_mod_4 = lm(log(SalePrice) ~ . - LotArea + log(LotArea) + I(TotalBsmtSF ^ 2) + I(YearBuilt ^ 2), data = train)
 ```
@@ -287,7 +312,8 @@ trans_mod_4 = lm(log(SalePrice) ~ . - LotArea + log(LotArea) + I(TotalBsmtSF ^ 2
 
 ### Model Choosing
 
-- In the next step, we will use BIC to choose the best model for us, and for the additive models, we will use both backward and stepwise search.
+**(1)** In the next step, we will use BIC to choose the best model for us, and for the additive models, we will use both backward and stepwise search. 
+
 ```{r}
 n = nrow(train) # for BIC
 
@@ -296,69 +322,80 @@ add_backward = step(model_add, direction = 'backward', trace = 0, k = log(n))
 add_stepwise = step(lm(SalePrice ~ 1, data = train),
                    scope = SalePrice ~ LotArea + MSZoning + LotShape + OverallQual + YearBuilt + TotalBsmtSF + LowQualFinSF + BedroomAbvGr + FullBath + GarageArea, direction = 'both', trace = 0, k = log(n))
 
-get_adj_r2(add_backward)
-get_adj_r2(add_stepwise)
-get_loocv_rmse(add_backward)
-get_loocv_rmse(add_stepwise)
+r2_1 = get_adj_r2(add_backward)
+r2_2 = get_adj_r2(add_stepwise)
+rmse_1 = get_loocv_rmse(add_backward)
+rmse_2 = get_loocv_rmse(add_stepwise)
 
 # interaction model 
 inter_backward = step(model_inter, direction = 'backward', k = log(n), trace = 0)
 
-get_adj_r2(inter_backward)
-get_loocv_rmse(inter_backward)
+r2_3 = get_adj_r2(inter_backward)
+rmse_3 = get_loocv_rmse(inter_backward)
 
 # log additive model
 log_add_backward = step(log_add, direction = 'backward', trace = 0, k = log(n))
 log_add_stepwise = step(lm(log(SalePrice) ~ 1, data = train), 
                        scope = log(SalePrice) ~ LotArea + MSZoning + LotShape + OverallQual + YearBuilt + TotalBsmtSF + LowQualFinSF + BedroomAbvGr + FullBath + GarageArea, trace = 0, direction = 'both', k = log(n))
 
-get_adj_r2(log_add_backward)
-get_adj_r2(log_add_stepwise)
-get_loocv_rmse(log_add_backward) # log response
-get_loocv_rmse(log_add_stepwise) # log response
+log_r2_1 = get_adj_r2(log_add_backward)
+log_r2_2 = get_adj_r2(log_add_stepwise)
+log_rmse_1 = get_loocv_rmse(log_add_backward) # log response
+log_rmse_2 = get_loocv_rmse(log_add_stepwise) # log response
 
 # log interaction model
 log_inter_backward = step(log_inter, direction = 'backward', trace = 0, k = log(n))
 
-get_adj_r2(log_inter_backward)
-get_loocv_rmse(log_inter_backward) # log response
+log_r2_3 = get_adj_r2(log_inter_backward)
+log_rmse_3 = get_loocv_rmse(log_inter_backward) # log response
 
 # transformation model 1
 trans_1_backward = step(trans_mod_1, direction = 'backward', trace = 0, k = log(n))
 trans_1_inter = step(trans_mod_1_inter, direction = 'backward', trace = 0, k = log(n))
 
-get_adj_r2(trans_1_backward)
-get_adj_r2(trans_1_inter)
-get_loocv_rmse(trans_1_backward) # log response
-get_loocv_rmse(trans_1_inter) # log response
+log_r2_4 = get_adj_r2(trans_1_backward)
+log_r2_5 = get_adj_r2(trans_1_inter)
+log_rmse_4 = get_loocv_rmse(trans_1_backward) # log response
+log_rmse_5 = get_loocv_rmse(trans_1_inter) # log response
 
 # transformation model 2
 trans_2_backward = step(trans_mod_2, direction = 'backward', trace = 0, k = log(n))
 
-get_adj_r2(trans_2_backward)
-get_loocv_rmse(trans_2_backward)
+r2_4 = get_adj_r2(trans_2_backward)
+rmse_4 = get_loocv_rmse(trans_2_backward)
 
 # transformation model 3
 trans_3_backward = step(trans_mod_3, direction = 'backward', trace = 0, k = log(n))
 
-get_adj_r2(trans_3_backward) 
-get_loocv_rmse(trans_3_backward) # log response
+log_r2_6 = get_adj_r2(trans_3_backward) 
+log_rmse_6 = get_loocv_rmse(trans_3_backward) # log response
 
 # transformation model 4
 trans_4_backward = step(trans_mod_4, direction = 'backward', k = log(n), trace = 0)
 
-get_adj_r2(trans_4_backward)
-get_loocv_rmse(trans_4_backward) # log response
+log_r2_7 = get_adj_r2(trans_4_backward)
+log_rmse_7 = get_loocv_rmse(trans_4_backward) # log response
 ```
 
 - Since some of the models have log transformed response, the non-log model and log model cannot be compared with LOOCV_RMSE directly, we will choose the best models of each kind.
 
-Based on the results above, we can find that for non-log model, the `inter_backward` model has the highest adjusted $R ^ 2$ and lowest LOOCV_RMSE. For log model, the `trans_4_backward` model has the lowest LOOCV_RMSE and `trans_1_inter` model has the highest adjusted $R ^ 2$.
-
-With this three model, we will use vif to check the collinearity and summary to find the significant predictors for us.
 ```{r}
-library(faraway)
+# non-log model
+order(c(r2_1, r2_2, r2_3, r2_4)) # sort adjusted R2
+order(c(rmse_1, rmse_2, rmse_3, rmse_4), decreasing = TRUE) # sort LOOCV_RMSE
 
+# log model
+# sort adjusted R2
+order(c(log_r2_1, log_r2_2, log_r2_3, log_r2_4, log_r2_5, log_r2_6, log_r2_7)) 
+# sort LOOCV_RMSE
+order(c(log_rmse_1, log_rmse_2, log_rmse_3, log_rmse_4, log_rmse_5, log_rmse_6, log_rmse_7), decreasing = TRUE)
+```
+
+Based on the results above, we can find that for non-log model, the `inter_backward` model has the highest adjusted $R ^ 2$ and lowest LOOCV_RMSE. For log model, the `log_inter_backward` model has the lowest LOOCV_RMSE and `trans_1_inter` model has the highest adjusted $R ^ 2$. Since none of the log models become the best in both aspects, we also consider `trans_4_backward`. which ranks second in both aspects.
+
+**(2)** With this four models, we will use vif to check the collinearity and summary to find the significant predictors for us. Since the results are too long, we will show them in the Appendix, not here.
+
+```{r,results=FALSE}
 vif(inter_backward)
 summary(inter_backward)$coef[, 'Pr(>|t|)'] < 0.05
 
@@ -367,32 +404,43 @@ summary(trans_4_backward)$coef[, 'Pr(>|t|)'] < 0.05
 
 vif(trans_1_inter)
 summary(trans_1_inter)$coef[, 'Pr(>|t|)'] < 0.05
+
+vif(log_inter_backward)
+summary(log_inter_backward)$coef[, 'Pr(>|t|)'] < 0.05
 ```
 
 Based on the results above, we try to modify some parameters for our models to remove the collinearity problem and unnecessary predictors.
+
 ```{r}
 inter_backward_new = lm(SalePrice ~ LotShape + OverallQual + YearBuilt + TotalBsmtSF + BedroomAbvGr + LotArea : OverallQual, data = train)
 
 trans_4_backward_new = lm(log(SalePrice) ~ MSZoning + OverallQual + TotalBsmtSF + FullBath + GarageArea + log(LotArea) + I(TotalBsmtSF ^ 2) + I(YearBuilt ^ 2), data = train)
 
 trans_1_inter_new = lm(log(SalePrice) ~ log(LotArea) + MSZoning + OverallQual + YearBuilt + TotalBsmtSF, data = train)
+
+log_inter_backward_new = lm(log(SalePrice) ~ LotArea + MSZoning + LotShape + OverallQual + YearBuilt + TotalBsmtSF + GarageArea + LotArea : TotalBsmtSF, data = train)
 ```
 
 Then we will use `ANOVA` to compare each new model with the previous.
+
 ```{r}
 # inter_backward model
-anova(inter_backward_new, inter_backward)
+anova(inter_backward_new, inter_backward)[2, "Pr(>F)"]
 
 # trans_4_backward model
-anova(trans_4_backward_new, trans_4_backward)
+anova(trans_4_backward_new, trans_4_backward)[2, "Pr(>F)"]
+
+# trans_1_inter model
+anova(trans_1_inter_new, trans_1_inter)[2, "Pr(>F)"]
 
 # log_inter_backward model
-anova(trans_1_inter_new, trans_1_inter)
+anova(log_inter_backward_new, log_inter_backward)[2, "Pr(>F)"]
 ```
 
-From the results of `ANOVA`, we find that all of the three origin models are preferred. So we decide not to change the models since collinearity will not affect prediction.
+From the results of `ANOVA`, we find that all of the four origin models are preferred instead of the new ones. So we decide not to change the models since collinearity will not affect prediction very much.
 
-- With this three models, we will use both train and test data to calculate base RMSE to compare the log and non-log models.
+**(3)** With this three models, we will use both train and test data to calculate base RMSE to compare the log and non-log models. Also we will calculate the average error.
+
 ```{r}
 # inter_backward model
 inter_train = sqrt(mean(resid(inter_backward) ^ 2))
@@ -400,11 +448,15 @@ inter_train = sqrt(mean(resid(inter_backward) ^ 2))
 test_pred_1 = predict(inter_backward, newdata = test)
 inter_test = sqrt(mean((test$SalePrice - test_pred_1) ^ 2))
 
+err1 = get_avg_err(test$SalePrice, test_pred_1)
+
 # trans_4_backward
 trans_train = sqrt(mean((train$SalePrice - exp(fitted(trans_4_backward))) ^ 2))
 
 test_pred_2 = exp(predict(trans_4_backward, newdata = test))
 trans_test = sqrt(mean((test$SalePrice - test_pred_2) ^ 2))
+
+err2 = get_avg_err(test$SalePrice, test_pred_2)
 
 # trans_1_inter
 trans_inter_train = sqrt(mean((train$SalePrice - exp(fitted(trans_1_inter))) ^ 2))
@@ -412,28 +464,39 @@ trans_inter_train = sqrt(mean((train$SalePrice - exp(fitted(trans_1_inter))) ^ 2
 test_pred_3 = exp(predict(trans_1_inter, newdata = test))
 trans_inter_test = sqrt(mean((test$SalePrice - test_pred_3) ^ 2))
 
+err3 = get_avg_err(test$SalePrice, test_pred_3)
+
+trans_inter_train = sqrt(mean((train$SalePrice - exp(fitted(log_inter_backward))) ^ 2))
+
+# log_inter_backward
+log_inter_train = sqrt(mean((train$SalePrice - exp(fitted(log_inter_backward))) ^ 2))
+
+test_pred_4 = exp(predict(log_inter_backward, newdata = test))
+log_inter_test = sqrt(mean((test$SalePrice - test_pred_4) ^ 2))
+
+err4 = get_avg_err(test$SalePrice, test_pred_4)
+
 # create a table to compare the result
-library(knitr)
-result = data.frame('inter_model' = c('train' = inter_train, 'test' = inter_test), 'trans_model' = c('train' = trans_train, 'test' = trans_test), 'trans_inter_model' = c('train' = trans_inter_train, 'test' = trans_inter_test))
-kable(result)
+result = data.frame('inter_model' = c('train' = inter_train, 'test' = inter_test, 'avg error' = err1), 'trans_4_model' = c('train' = trans_train, 'test' = trans_test, 'avg error' = err2), 'trans_inter_model' = c('train' = trans_inter_train, 'test' = trans_inter_test, 'avg error' = err3), 'log_inter_model' = c('train' = log_inter_train, 'test' = log_inter_test, 'avg error' = err4))
+
+kable(result, digits = 5) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-From the table above, we can see that the `trans_4_backward` model has the lowest test RMSE as well as the best train RMSE.
+From the table above, we can see that the `trans_4_backward` model has the lowest test RMSE, the best train RMSE as well as the lowest average error. It is the best model in any aspects.
 
-Therefore, we prefer to choose the `trains_4_backward` model, which having the following coefficients:
-```{r}
-coef(trans_4_backward)
-```
+Therefore, we prefer to choose the `trains_4_backward` model as our result.
 
-### Model Diagnostics
+## Model Diagnostics
 
-After selecting the preferred model, we are going to verify the model assumptions.
+**(1)** After selecting the preferred model, we are going to verify the model assumptions.
+
 ```{r}
 plot_fitted_resid(trans_4_backward)
 plot_qq(trans_4_backward)
 ```
 
-From the `fitted vs residual` plot and `qq plot`, it seems that the constant variance and normality assumptions are a little suspect. 
+From the `fitted vs residual` plot and `Q-Q plot`, it seems that the constant variance and normality assumptions are a little suspect. 
 
 ```{r}
 get_sw_decision(trans_4_backward)
@@ -442,7 +505,8 @@ get_bp_decision(trans_4_backward)
 
 And also, Breusch-Pagan Test and Shapiro Wilk Test verify the violation of assumptions, they both reject the null under $\alpha = 0.05$.
 
-To fix the problem, we first try to remove the high influential observations.
+**(2)** To fix the problem, we first try to remove the high influential observations.
+
 ```{r}
 # Cook's Distance 
 cd_trans_model = cooks.distance(trans_4_backward)
@@ -457,4 +521,148 @@ get_sw_decision(model_fix)
 get_bp_decision(model_fix)
 ```
 
-From the two plots, we can see that they look much better than before, although it still cannot pass the two assumption tests.
+From the two plots, we can see that they look really much better than before, although it still cannot pass the two assumption tests.
+
+**(3)** For the next step, we try to use Box-Cox transformations to see if it will work.
+
+```{r}
+boxcox(model_fix, plotit = TRUE)
+```
+
+From the plot, we can see that $\lambda = 0$ is in the interval and very close to the maximum, it means that our fixed model is good enough for Box-Cox method, but we still try to use the maximum to see if the transformation can pass the assumption tests. We will use $\lambda = 0.25$.
+
+```{r}
+model_boxcox = lm((((log(SalePrice)) ^ 0.25 - 1) / 0.25) ~ MSZoning + LotShape + OverallQual + YearBuilt + TotalBsmtSF + BedroomAbvGr + FullBath + GarageArea + log(LotArea) + I(TotalBsmtSF ^ 2) + I(YearBuilt ^ 2), data = train, subset = cd_trans_model <= 4 / length(cd_trans_model))
+
+# check the new model
+plot_fitted_resid(model_boxcox)
+plot_qq(model_boxcox)
+
+get_sw_decision(model_boxcox)
+get_bp_decision(model_boxcox)
+```
+
+The new model still cannot pass the test, but we can find that the fitted vs residuals plot seems a little better. 
+
+**(4)** We will get the p-value of sw test and bp test directly to see how far the two models are from not violating the assumptions.
+
+```{r}
+# previous fixed model
+shapiro.test(resid(model_fix))$p.value
+bptest(model_fix)$p.value
+
+# Box-Cox model
+shapiro.test(resid(model_boxcox))$p.value
+bptest(model_boxcox)$p.value
+```
+
+We could see that although the two fixed models could not pass the tests, but their p-values are not that small, actually they could be accepted if we use a smaller $\alpha$ level. And since we just want to get the model for prediction, if the accuracy is high enough, we would consider they are acceptable.
+
+***
+
+# Result
+
+From the section above, we have chosen the model with following coefficients as our final model.
+
+```{r}
+names(coef(trans_4_backward))
+```
+
+The model expression is:
+$$
+\begin{align*}
+\hat{SalePrcie} = &\beta_0 + \beta_1X_{MSZoningFV} + \beta_2X_{MSZoningRH} +
+\beta_3X_{MSZoningRL} + \beta_4X_{MSZoningRM} + \beta_5X_{LotShapeIR2} +
+\beta_6X_{LotShapeIR3} + \beta_7X_{LotShapeReg}\\ 
+&+ \beta_8X_{OverallQualexcellent} + \beta_9X_{OverallQualpoor} + \beta_{10}X_{YearBuilt} + \beta_{11}X_{TotalBsmtSF} + \beta_{12}X_{BedroomAbvGr} + \beta_{13}X_{FullBath} + \beta_{14}X_{GarageArea}\\ 
+&+ \beta_{15}X_{log(LotArea)} + \beta_{16}X_{TotalBsmtSF^2} + \beta_{17}X_{YearBuilt^2}
+\end{align*}
+$$
+
+In the end, we also want to know the accuracy of our model after modifying.
+
+```{r}
+# model removing influential observations
+test_1 = exp(predict(model_fix, newdata = test))
+RMSE_1 = sqrt(mean((test$SalePrice - test_1) ^ 2))
+error_1 = get_avg_err(test$SalePrice, test_1)
+
+# Box-Cox model
+test_2 = exp((predict(model_boxcox, newdata = test) * 0.25 + 1) ^ (1 / 0.25))
+RMSE_2 = sqrt(mean((test$SalePrice - test_2) ^ 2))
+error_2 = get_avg_err(test$SalePrice, test_2)
+
+# create the table to show result
+result = data.frame(model_influential = c('test_RMSE' = RMSE_1, 'avg error' = error_1), model_boxcox = c('test_RMSE' = RMSE_2, 'avg error' = error_2))
+
+kable(result, digits = 5) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+The average error seems good, while test RMSE seems a bit large, we will talk about this in next section.
+
+***
+
+# Discussion
+
+## Model Interpretion
+
+From the sections above, we can find that our final model uses all the predictors chosen in our data set except `LowQualFinSF`, which representing the low quality square feet.
+
+```{r}
+head(train$LowQualFinSF, 10)
+mean(train$LowQualFinSF == 0)
+```
+
+After taking a glance at the `LowQualFinSF` data, we find almost all of the `LowQualFinSF` data are 0 so it's not a significant variable, this is why we do not use it as a predictor.
+
+In this model, we use log tranformation to the response `SalePrice` and `LotArea`, and polynomial to `TotalBsmtSF` and `YearBuilt`, all of these transformations are from their distributions with `SalePrice` to make their relationship more linearly.
+
+## Model Accuracy
+ 
+From above sections, we can see the average errors of our fixed models are lower than **15%**, which indicates they are reliable for prediction.
+
+And also, the test RMSEs are around 40000, which is seemingly a large value, we may want to discover why.
+
+```{r}
+summary(data_raw$SalePrice)
+```
+
+From the summary of `SalePrice`, we could find its unit is dollar, so there is no wonder that the RMSE is a big value since the sale prices are all big values in dollar.
+
+Therefore, the accuracy of our model is acceptable. 
+
+And also, since we have omitted a large amount of attributes when we imported the data, the currently acceptable average error and difference shows that at least we are on the right way with fewer attributes, and we can add more attributes later to fit more complicated model with similar process to improve the accuracy.
+
+## Conclusion
+
+**In conclusion, our model is acceptable for prediction after removing influential observations or using Box-Cox tranforamtion. Although there still exists error, the error is in acceptable range. And later we can add more attributes that we did not use in this project to get more accurate model in similar methods. And right now we could rely on the current model for a rough estimation for our dream house!**
+
+**We believe that the estimations for the ordinary houses are reliable while we would better not use it for the house which looks like extremely special from others since the we removed the influential observations when modifying the model so that our model may not useful for those special houses.**
+
+***
+
+# Appendix
+
+When we want to discover the relationship between each variables to consider the transformation, we use `pairs` function.
+
+```{r}
+pairs(train, col = "darkorange")
+```
+
+When we tried to eliminate the collinearity and select significant parameters in model selection section, we have hidden the result to make the document neater.
+
+```{r}
+vif(inter_backward)
+summary(inter_backward)$coef[, 'Pr(>|t|)'] < 0.05
+
+vif(trans_4_backward)
+summary(trans_4_backward)$coef[, 'Pr(>|t|)'] < 0.05
+
+vif(trans_1_inter)
+summary(trans_1_inter)$coef[, 'Pr(>|t|)'] < 0.05
+
+vif(log_inter_backward)
+summary(log_inter_backward)$coef[, 'Pr(>|t|)'] < 0.05
+```
+
